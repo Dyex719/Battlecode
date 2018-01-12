@@ -4,7 +4,8 @@ import random
 import sys
 from multiprocessing import Pool
 import traceback
-def genInKarbLocs():
+import numpy
+'''def genInKarbLocs():
     pmap=gc.starting_map(bc.Planet.Earth)
     karbArr=[]
     for x in range(1,pmap.width):
@@ -18,8 +19,8 @@ def genInKarbLocs():
             except Exception as e:
                 print(mp)
                 print(e)
-    return karbArr
-    
+    return karbArr        
+'''
 def main():
     print("pystarting")
 
@@ -42,11 +43,11 @@ def main():
     gc.queue_research(bc.UnitType.Knight)
     my_team = gc.team()
     #inKarbs1=(genInKarbLocs())
-    p=Pool(processes=10)
-    inKarbs2=p.map(genInKarbLocs,[])
+    #p=Pool(processes=10)
+    #inKarbs2=p.map(genInKarbLocs,[])
     #p.close()
     #print(inKarbs1)
-    print(inKarbs2)
+    #print(inKarbs2)
     while True:
         # We only support Python 3, which means brackets around print()
         print('pyround:', gc.round())
@@ -56,15 +57,21 @@ def main():
         try:
             # walk through our units:
             for unit in gc.my_units():
-                location = unit.location
-                
-                surr=gc.all_locations_within(location.map_location(),9)
                 if(unit.unit_type==bc.UnitType.Worker):
+                    location = (unit.location).map_location()
+                    surr=gc.all_locations_within(location,9)
+                    moves=[]
                     for loc in surr:
                         if(gc.karbonite_at(loc)>0):
-                            
-                    d=random.choice(directions)
-                    gc.move_robot(unit.id,d)
+                            moves.append(location.direction_to(loc))
+                    move=random.choice(moves)
+                    movePoss=gc.is_move_ready(unit.id)
+                    moveOcc=gc.is_occupiable(location.add(move))
+                    if(movePoss and moveOcc):
+                        gc.move_robot(unit.id,move)
+                    print(gc.karbonite())
+                
+                        
                  
                 '''if location.is_on_map():
                     if unit.unit_type == bc.UnitType.Worker:
