@@ -35,9 +35,9 @@ while True:
                 location = unit.location
 
                 if location.is_on_map(): #could be in space
-                    nearby = gc.sense_nearby_units(location.map_location(), 2)
+                    nearby = gc.sense_nearby_units(location.map_location(),2)
                     for other in nearby:
-                        if unit.unit_type == bc.UnitType.Worker and gc.can_build(unit.id, other.id) :
+                        if unit.unit_type == bc.UnitType.Worker and gc.can_build(unit.id, other.id) and other.structure_is_built:
                             gc.build(unit.id, other.id)
                             print('built a factory!')
                             continue
