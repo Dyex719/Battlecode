@@ -1,152 +1,145 @@
-
-# Running into logical errors :(
-
 import battlecode as bc
 import random
 import sys
 import traceback
 
-def factory_logic(gc,directions,unit,knight_count=0):
-    if unit.unit_type == bc.UnitType.Factory:
-        garrison = unit.structure_garrison()
-        if len(garrison) > 0:
+print("pystarting")
+
+# A GameController is the main type that you talk to the game with.
+# Its constructor will connect to a running game.
+gc = bc.GameController()
+directions = list(bc.Direction)
+useful_dir =[]
+for x in directions:
+    useful_dir.append(x);
+tryRotate = [0,-1,1,-2,2]
+print("pystarted")
+
+# It's a good idea to try to keep your bots deterministic, to make debugging easier.
+# determinism isn't required, but it means that the same things will happen in every thing you run,
+# aside from turns taking slightly different amounts of time due to noise.
+random.seed(6137)
+
+# let's start off with some research!
+# we can queue as much as we want.
+gc.queue_research(bc.UnitType.Rocket)
+gc.queue_research(bc.UnitType.Worker)
+gc.queue_research(bc.UnitType.Knight)
+
+my_team = gc.team()
+
+one_loc=None
+enemy_start=None
+
+def invert(loc):
+    inv_x = earth_map.width-loc.x
+    inv_y = earth_map.height-loc.y
+    return bc.MapLocation(bc.Planet.Earth,inv_x,inv_y)
+
+# Lets analyse the map
+# pm = bc.PlanetMap()
+pl = bc.Player(my_team,bc.Planet.Earth)
+#for planet in pl.planet: # This is ob wrong, I only want to run the code if it is earth, but it has to run before the main loop starts. We can use a function I guess.
+def mid_point(loc1,loc2):
+    mid_x = int((loc1.x + loc2.x) / 2)
+    mid_y = int((loc1.y + loc2.y) / 2)
+    return bc.MapLocation(bc.Planet.Earth,mid_x,mid_y)
+#
+# def goto(unit,dest):
+#     d = unit.location.map_location().direction_to(dest)
+#     if gc.can_move(unit.id,d):
+#         gc.move_robot(unit.id,d)
+
+def fuzzygoto(gc,tryRotate,directions,unit,dest):
+    toward = unit.location.map_location().direction_to(dest)
+    for tilt in tryRotate:
+        d = rotate(directions,toward,tilt)
+        if gc.can_move(unit.id,d):
+            gc.move_robot(unit.id,d)
+            break
+
+def rotate(directions,direc,amount):
+    ind = directions.index(direc)
+    return directions[(ind+amount)%8]
+
+
+while True:
+    # We only support Python 3, which means brackets around print()
+    print('pyround:', gc.round())
+    
+    if(gc.planet()==bc.Planet.Earth and one_loc is None and enemy_start is None):
+        earth_map = gc.starting_map(bc.Planet.Earth)
+        one_loc = gc.my_units()[0].location.map_location()
+        enemy_start = invert(one_loc)
+        print("Enemy starts at" + str(enemy_start.x) +" " +str(enemy_start.y))
+        print("We start at" + str(one_loc.x) +" " +str(one_loc.y))
+        swarm_loc = mid_point(one_loc,enemy_start)
+        knight_count = 0    
+    
+    # frequent try/catches are a good idea
+    
+
+    try:
+        # walk through our units:
+        for unit in gc.my_units():
+
+            # first, factory logic
+            if unit.unit_type == bc.UnitType.Factory:
+                garrison = unit.structure_garrison()
+                if len(garrison) > 0:
+                    d = random.choice(directions)
+                    if gc.can_unload(unit.id, d):
+                        print('unloaded a knight!')
+                        gc.unload(unit.id, d)
+                        continue
+                elif gc.can_produce_robot(unit.id, bc.UnitType.Knight):
+                    gc.produce_robot(unit.id, bc.UnitType.Knight)
+                    print('produced a knight!')
+                    knight_count += 1
+                    continue
+
+            # first, let's look for nearby blueprints to work on
+            location = unit.location
+            if location.is_on_map():
+                nearby = gc.sense_nearby_units(location.map_location(), 2)
+                for other in nearby:
+                    if unit.unit_type == bc.UnitType.Worker and gc.can_build(unit.id, other.id):
+                        gc.build(unit.id, other.id)
+                        print('built a factory!')
+                        # move onto the next unit
+                        continue
+                    if other.team != my_team and gc.is_attack_ready(unit.id) and gc.can_attack(unit.id, other.id):
+                        print('attacked a thing!')
+                        gc.attack(unit.id, other.id)
+                        continue
+                    elif unit.unit_type == bc.UnitType.Knight and gc.is_move_ready(unit.id) and gc.round()<50:
+                        fuzzygoto(gc,tryRotate,directions,unit,swarm_loc)
+                    elif unit.unit_type == bc.UnitType.Knight and gc.is_move_ready(unit.id) and gc.round()>50:
+                        fuzzygoto(gc,tryRotate,directions,unit,enemy_start)
+
+            # okay, there weren't any dudes around
+            # pick a random direction:
             d = random.choice(directions)
-            if gc.can_unload(unit.id, d):
-                print('unloaded a knight!')
-                gc.unload(unit.id, d)
-                return 1
-        elif gc.can_produce_robot(unit.id, bc.UnitType.Knight):
-            gc.produce_robot(unit.id, bc.UnitType.Knight)
-            print('produced a knight!')
-            knight_count += 1
-            return 1
-    else:
-        print("Recieved non-factory in function")
-        return 0
 
-def knight_logic(gc,directions,unit, object_at_distance,location):
-    if unit.unit_type == bc.UnitType.Knight:
-        d = random.choice(directions)
-        try:
-            if objects.team != my_team and gc.is_attack_ready(unit.id) and gc.can_attack(unit.id, objects.id):
-                print('attacked a thing!')
-                gc.attack(unit.id, objects.id)
-                return 1
-            elif objects.team != my_team and gc.is_attack_ready(unit.id):
-                shortest_path = unit.location.map_location().direction_to(objects.location.map_location())
-                if gc.is_move_ready(unit.id) and gc.can_move(unit.id, shortest_path): #can add stuff related to attack cooldown
-                    print('Moving towards an enemy')
-                    gc.move_robot(unit.id, shortest_path)
-                    return 1
-            # d = random.choice(directions)
-            elif gc.is_move_ready(unit.id) and gc.can_move(unit.id, d):
-                gc.move_robot(unit.id, d)
-                return 0
-            else:
-                print("knight did nothing")
-        except Exception as e:
-            print('Error:', e)
-            # use this to show where the error was
-            traceback.print_exc()
-    else:
-        print("Recieved non-knight in function")
-        return 0
+            # or, try to build a factory:
+            if gc.karbonite() > bc.UnitType.Factory.blueprint_cost() and gc.can_blueprint(unit.id, bc.UnitType.Factory, d):
+                gc.blueprint(unit.id, bc.UnitType.Factory, d)
+            # and if that fails, try to move
+           
+            #These two statements give an exception. Without these however, the code works just fine
+            #elif gc.is_move_ready(unit.id) and gc.can_move(unit.id, d):
+             #   gc.move_robot(unit.id,useful_dir)
 
-def worker_logic(gc,directions,unit,location,factory_count=0):
-    d = random.choice(directions)
-    # first, let's look for nearby blueprints to work on
-    if location.is_on_map():
-        nearby = gc.sense_nearby_units_by_type(location.map_location(), 2,bc.UnitType.Factory)
-        for other in nearby:
-            if gc.can_build(unit.id, other.id):
-                gc.build(unit.id, other.id)
-                print('built a factory!')
-                factory_count += 0
-        if gc.is_move_ready(unit.id) and gc.can_move(unit.id, d):
-                map_location = (unit.location).map_location()
-                surr=gc.all_locations_within(map_location,9)
-                moves=[]
-                for loc in surr:
-                    if(gc.karbonite_at(loc)>0):
-                        moves.append(map_location.direction_to(loc))
-                move=random.choice(moves)
-                movePoss=gc.is_move_ready(unit.id)
-                moveOcc=gc.is_occupiable(map_location.add(move))
-                if(movePoss and moveOcc):
-                    gc.move_robot(unit.id,move)
-                print(gc.karbonite())
+    except Exception as e:
+        print('Error:', e)
+        # use this to show where the error was
+        traceback.print_exc()
 
-        if gc.karbonite() > bc.UnitType.Factory.blueprint_cost() and gc.can_blueprint(unit.id, bc.UnitType.Factory, d):
-                gc.blueprint(unit.id, bc.UnitType.Factory, d)  
-        
-        
-    # elif gc.can_replicate(unit.id,d):
-    #     gc.replicate(unit.id,d)
+    # send the actions we've performed, and wait for our next turn.
+    gc.next_turn()
 
-    
-    else:
-        return 0
-
-if __name__=='__main__':
-    print("pystarting")
-    gc = bc.GameController()
-    directions = list(bc.Direction)
-    print("pystarted")
-
-    random.seed(8078)
-    worker_count = 1
-    knight_count = 0
-    factory_count = 0
-    
-    gc.queue_research(bc.UnitType.Worker)
-    gc.queue_research(bc.UnitType.Rocket)
-    gc.queue_research(bc.UnitType.Knight)
-    
-    my_team = gc.team()
-    for x in bc.Team:
-        if (x != my_team):
-            enemy_team=x
-
-    while True:
-        print('pyround:', gc.round())
-    
-        try:
-            for unit in gc.my_units():
-                location = unit.location
-    
-                if unit.unit_type == bc.UnitType.Factory:
-                    print("Im a factory")
-                    return_val = factory_logic(gc,directions,unit)
-                    if (return_val == 1): continue
-                if unit.unit_type == bc.UnitType.Worker:
-                    print("Im a worker")
-                    return_val = worker_logic(gc,directions,unit,location)
-                    if (return_val == 1): continue
-    
-                units_at_distance = gc.sense_nearby_units(unit.location.map_location(),50)
-                for objects in units_at_distance:
-                    #HARDCODED
-                    if unit.unit_type == bc.UnitType.Knight:
-                        print("Im a knight")
-                        return_val = knight_logic(gc,directions,unit,objects,location)
-                        if (return_val == 1): continue
-    
-                d = random.choice(directions)
-    
-                # the line below gives an ERROR when I use elif CHK
-                if (gc.is_move_ready(unit.id) and gc.can_move(unit.id, d)):
-                    gc.move_robot(unit.id, d)
-                else:
-                    print("Did nothing")
-    
-        except Exception as e:
-            print('Error:', e)
-            traceback.print_exc()
-    
-        gc.next_turn()
-    
-        sys.stdout.flush()
-        sys.stderr.flush()
-
-
+    # these lines are not strictly necessary, but it helps make the logs make more sense.
+    # it forces everything we've written this turn to be written to the manager.
+    sys.stdout.flush()
+    sys.stderr.flush()
 
