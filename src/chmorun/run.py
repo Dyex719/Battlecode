@@ -2,6 +2,7 @@ import battlecode as bc
 import random
 import sys
 import traceback
+import numpy as np
 
 print("pystarting")
 
@@ -29,6 +30,9 @@ gc.queue_research(bc.UnitType.Knight)
 
 
 my_team = gc.team()
+for x in bc.Team:
+    if(x!=my_team):
+        enemy_team=x
 
 one_loc=None
 enemy_start=None
@@ -66,6 +70,47 @@ def fuzzygoto(gc,tryRotate,directions,unit,dest):
         if gc.can_move(unit.id,d):
             gc.move_robot(unit.id,d)
             break
+            
+def formation_move(gc,tryRotate,directions,unit,enemy_start,adjacent_1,adjacent_2):
+    '''
+    Sends rangers out first and then knights and mages
+    combatants=[un for index, un in enumerate(gc.my_units()) if (un.unit_type == bc.UnitType.Mage) or (un.unit_type == bc.UnitType.Knight)]
+    rangers=[un for index, un in enumerate(gc.my_units()) if un.unit_type == bc.UnitType.Ranger]
+    for ran in rangers:
+        if(gc.round()%150<=50):
+            fuzzygoto(gc,tryRotate,directions,ran,mid_point(swarm_loc,enemy_start))
+            if(gc.sense_nearby_units_by_team(ran.location.map_location(),60,enemy_team)):
+                for uns in combatants:
+                    fuzzygoto(gc,tryRotate,directions,unit,enemy_start)    
+        elif(gc.round()%150>50 and ((gc.round()%150) <=90)):
+            fuzzygoto(gc,tryRotate,directions,ran,mid_point(swarm_loc,adjacent_1))
+            if gc.sense_nearby_units_by_team(ran.location.map_location(),60,enemy_team):
+                for uns in combatants:
+                    fuzzygoto(gc,tryRotate,directions,uns,adjacent_1)    
+        elif(gc.round()%150>=90 and ((gc.round())%150 <130)):
+            fuzzygoto(gc,tryRotate,directions,ran,mid_point(swarm_loc,adjacent_2))
+            if (gc.sense_nearby_units_by_team(ran.location.map_location(),60,enemy_team)):
+                for uns in combatants:
+                    fuzzygoto(gc,tryRotate,directions,unit,adjacent_2)    
+        else:
+            fuzzygoto(gc,tryRotate,directions,ran,mid_point(swarm_loc,one_loc))    
+            if(gc.sense_nearby_units_by_team(ran.location.map_location(),60,enemy_team)):
+                for uns in combatants:
+                    fuzzygoto(gc,tryRotate,directions,unit,one_loc)    
+                
+      '''      
+    #Everything below gives the working circling code
+    if(gc.round()%150<=50):
+        fuzzygoto(gc,tryRotate,directions,unit,enemy_start)
+    elif(gc.round()%150>50 and ((gc.round()%150) <=90)):
+        fuzzygoto(gc,tryRotate,directions,unit,adjacent_1)
+    elif(gc.round()%150>=90 and ((gc.round())%150 <130)):
+        fuzzygoto(gc,tryRotate,directions,unit,adjacent_2)
+    else:
+        fuzzygoto(gc,tryRotate,directions,unit,one_loc)
+    
+                    
+    
 
 def rotate(directions,direc,amount):
     ind = directions.index(direc)
@@ -120,6 +165,7 @@ while True:
                     # first, let's look for nearby blueprints to work on
             location = unit.location
             if location.is_on_map():
+                print(my_team)
                 nearby = gc.sense_nearby_units(location.map_location(), 2)
                 for other in nearby:
                     if unit.unit_type == bc.UnitType.Worker and gc.can_build(unit.id, other.id):
@@ -134,14 +180,8 @@ while True:
                     elif (unit.unit_type == bc.UnitType.Knight or unit.unit_type==bc.UnitType.Ranger) and gc.is_move_ready(unit.id) and gc.round()<=150:
                         fuzzygoto(gc,tryRotate,directions,unit,swarm_loc)
                     elif (unit.unit_type == bc.UnitType.Knight or unit.unit_type==bc.UnitType.Ranger or unit.unit_type==bc.UnitType.Mage) and gc.is_move_ready(unit.id) and gc.round()>150:
-                        if(gc.round()%150<=70):
-                            fuzzygoto(gc,tryRotate,directions,unit,enemy_start)
-                        elif(gc.round()%150>70 and ((gc.round()%150) <=110)):
-                            fuzzygoto(gc,tryRotate,directions,unit,adjacent_1)
-                        elif(gc.round()%150>=110 and ((gc.round())%150 <150)):
-                            fuzzygoto(gc,tryRotate,directions,unit,adjacent_2)
-                    
-                    # okay, there weren't any dudes around
+                        formation_move(gc,tryRotate,directions,unit,enemy_start,adjacent_1,adjacent_2)
+                        
             # pick a random direction:
             d = random.choice(directions)
 
