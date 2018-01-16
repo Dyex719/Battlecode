@@ -35,6 +35,14 @@ def invert(loc):
     inv_x = earth_map.width-loc.x
     inv_y = earth_map.height-loc.y
     return bc.MapLocation(bc.Planet.Earth,inv_x,inv_y)
+def direct_adjacent_1(loc):
+    abv_x= earth_map.width
+    abv_y=earth_map.height- loc.y
+    return bc.MapLocation(bc.Planet.Earth,abv_x,abv_y)
+def direct_adjacent_2(loc):
+    abv_x= earth_map.width-loc.x
+    abv_y=earth_map.height
+    return bc.MapLocation(bc.Planet.Earth,abv_x,abv_y)
 
 # Lets analyse the map
 # pm = bc.PlanetMap()
@@ -74,8 +82,11 @@ while True:
         print("Enemy starts at" + str(enemy_start.x) +" " +str(enemy_start.y))
         print("We start at" + str(one_loc.x) +" " +str(one_loc.y))
         swarm_loc = mid_point(one_loc,enemy_start)
-        knight_count = 0    
-    
+        knight_count = 0 
+        ranger_count=0 
+        mage_count=0  
+        adjacent_1=direct_adjacent_1(one_loc)
+        adjacent_2=direct_adjacent_2(one_loc)    
     # frequent try/catches are a good idea
     
 
@@ -89,15 +100,25 @@ while True:
                 if len(garrison) > 0:
                     d = random.choice(directions)
                     if gc.can_unload(unit.id, d):
-                        print('unloaded a knight!')
+                        print('unloaded a unit!')
                         gc.unload(unit.id, d)
                         continue
-                elif gc.can_produce_robot(unit.id, bc.UnitType.Knight):
-                    gc.produce_robot(unit.id, bc.UnitType.Knight)
-                    print('produced a knight!')
-                    knight_count += 1
-                    continue
-
+                elif gc.can_produce_robot(unit.id,bc.UnitType.Knight) or gc.can_produce_robot(unit.id,bc.UnitType.Ranger) or gc.can_produce_robot(unit.id,bc.UnitType.Mage) :
+                    if(gc.round()%60>=20):
+                        gc.produce_robot(unit.id, bc.UnitType.Knight)
+                        print('produced a knight!')
+                        knight_count += 1
+                        continue
+                    if(gc.round()%60>=20 and gc.round()%60<=40):
+                        gc.produce_robot(unit.id,bc.UnitType.Mage)
+                        print('produced a ranger')
+                        ranger_count+=1
+                        continue
+                    else:
+                        gc.produce_robot(unit.id,bc.UnitType.Ranger)
+                        print('produced a mage')
+                        mage_count+=1
+                        continue
             # first, let's look for nearby blueprints to work on
             location = unit.location
             if location.is_on_map():
@@ -112,12 +133,17 @@ while True:
                         print('attacked a thing!')
                         gc.attack(unit.id, other.id)
                         continue
-                    elif unit.unit_type == bc.UnitType.Knight and gc.is_move_ready(unit.id) and gc.round()<50:
+                    elif (unit.unit_type == bc.UnitType.Knight or unit.unit_type==bc.UnitType.Ranger) and gc.is_move_ready(unit.id) and gc.round()<=150:
                         fuzzygoto(gc,tryRotate,directions,unit,swarm_loc)
-                    elif unit.unit_type == bc.UnitType.Knight and gc.is_move_ready(unit.id) and gc.round()>50:
-                        fuzzygoto(gc,tryRotate,directions,unit,enemy_start)
-
-            # okay, there weren't any dudes around
+                    elif (unit.unit_type == bc.UnitType.Knight or unit.unit_type==bc.UnitType.Ranger or unit.unit_type==bc.UnitType.Mage) and gc.is_move_ready(unit.id) and gc.round()>150:
+                        if(gc.round()%150<=70):
+                            fuzzygoto(gc,tryRotate,directions,unit,enemy_start)
+                        elif(gc.round()%150>70 and ((gc.round()%150) <=110)):
+                            fuzzygoto(gc,tryRotate,directions,unit,adjacent_1)
+                        elif(gc.round()%150>=110 and ((gc.round())%150 <150)):
+                            fuzzygoto(gc,tryRotate,directions,unit,adjacent_2)
+                    
+                    # okay, there weren't any dudes around
             # pick a random direction:
             d = random.choice(directions)
 
