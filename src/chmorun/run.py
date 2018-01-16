@@ -9,6 +9,7 @@ print("pystarting")
 # Its constructor will connect to a running game.
 gc = bc.GameController()
 directions = list(bc.Direction)
+robots=[bc.UnitType.Knight,bc.UnitType.Mage,bc.UnitType.Ranger]
 useful_dir =[]
 for x in directions:
     useful_dir.append(x);
@@ -25,6 +26,7 @@ random.seed(6137)
 gc.queue_research(bc.UnitType.Rocket)
 gc.queue_research(bc.UnitType.Worker)
 gc.queue_research(bc.UnitType.Knight)
+
 
 my_team = gc.team()
 
@@ -47,7 +49,6 @@ def direct_adjacent_2(loc):
 # Lets analyse the map
 # pm = bc.PlanetMap()
 pl = bc.Player(my_team,bc.Planet.Earth)
-#for planet in pl.planet: # This is ob wrong, I only want to run the code if it is earth, but it has to run before the main loop starts. We can use a function I guess.
 def mid_point(loc1,loc2):
     mid_x = int((loc1.x + loc2.x) / 2)
     mid_y = int((loc1.y + loc2.y) / 2)
@@ -85,6 +86,7 @@ while True:
         knight_count = 0 
         ranger_count=0 
         mage_count=0  
+        healer_count=0
         adjacent_1=direct_adjacent_1(one_loc)
         adjacent_2=direct_adjacent_2(one_loc)    
     # frequent try/catches are a good idea
@@ -104,22 +106,18 @@ while True:
                         gc.unload(unit.id, d)
                         continue
                 elif gc.can_produce_robot(unit.id,bc.UnitType.Knight) or gc.can_produce_robot(unit.id,bc.UnitType.Ranger) or gc.can_produce_robot(unit.id,bc.UnitType.Mage) :
-                    if(gc.round()%60>=20):
-                        gc.produce_robot(unit.id, bc.UnitType.Knight)
-                        print('produced a knight!')
+                    robo=random.choice(robots)
+                    gc.produce_robot(unit.id, robo)
+                    print('produced a knight!')
+                    if(robo==bc.UnitType.Knight):
                         knight_count += 1
-                        continue
-                    if(gc.round()%60>=20 and gc.round()%60<=40):
-                        gc.produce_robot(unit.id,bc.UnitType.Mage)
-                        print('produced a ranger')
-                        ranger_count+=1
-                        continue
-                    else:
-                        gc.produce_robot(unit.id,bc.UnitType.Ranger)
-                        print('produced a mage')
-                        mage_count+=1
-                        continue
-            # first, let's look for nearby blueprints to work on
+                    elif(robo==bc.UnitType.Mage):
+                        mage_count += 1
+                    elif(robo==bc.UnitType.Ranger):
+                        ranger_count += 1
+                    elif(robo==bc.UnitType.Healer):
+                        healer_count += 1        
+                    # first, let's look for nearby blueprints to work on
             location = unit.location
             if location.is_on_map():
                 nearby = gc.sense_nearby_units(location.map_location(), 2)
